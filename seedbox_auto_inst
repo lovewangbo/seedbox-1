@@ -1,0 +1,381 @@
+#!/bin/bash
+# PLEASE DO NOT SET ANY OF THE VARIABLES, THEY WILL BE POPULATED IN THE MENU
+# Stop when errors, do not place before #!/bin/bash
+set -e
+
+sudo passwd root
+
+su
+wget -qO- bench.sh | bash
+apt-get update; apt-get install smartmontools;
+# smartctl -A /dev/sda
+smartctl -a -d cciss,0 /dev/sda
+smartctl -a -d cciss,1 /dev/sda
+
+# 测速
+# 方法1：
+su
+wget -O speedtest https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py
+chmod +x speedtest
+./speedtest
+# 方法2：
+su
+apt-get -y install iperf3
+iperf3 -c ping.online.net
+
+su
+apt-get update
+apt-get upgrade
+
+# 2. 若版本为14.04，先升级到16.04【否则安装不了BBR】
+su
+apt-get update
+apt-get upgrade
+apt-get dist-upgrade
+apt-get install update-manager-core
+do-release-upgrade
+# 然后一路y和Enter即可。
+
+su
+wget --no-check-certificate https://github.com/teddysun/across/raw/master/bbr.sh;chmod +x bbr.sh;./bbr.sh
+mkdir -p /lib/firmware/bnx2
+wget -O /lib/firmware/bnx2/bnx2-rv2p-09ax-6.0.17.fw https://raw.githubusercontent.com/cernekee/linux-firmware/master/bnx2/bnx2-rv2p-09ax-6.0.17.fw
+wget -O /lib/firmware/bnx2/bnx2-rv2p-09-6.0.17.fw https://raw.githubusercontent.com/cernekee/linux-firmware/master/bnx2/bnx2-rv2p-09-6.0.17.fw
+wget -O /lib/firmware/bnx2/bnx2-rv2p-06-6.0.15.fw https://raw.githubusercontent.com/cernekee/linux-firmware/master/bnx2/bnx2-rv2p-06-6.0.15.fw
+wget -O /lib/firmware/bnx2/bnx2-mips-09-6.2.1b.fw https://raw.githubusercontent.com/cernekee/linux-firmware/master/bnx2/bnx2-mips-09-6.2.1b.fw
+wget -O /lib/firmware/bnx2/bnx2-mips-06-6.2.3.fw https://raw.githubusercontent.com/cernekee/linux-firmware/master/bnx2/bnx2-mips-06-6.2.3.fw
+reboot
+uname -r
+
+su
+cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; date;
+
+su
+## Online, OneProvider, Kimsufi
+git clone https://github.com/lovewangbo/ipv6-dhclient-script.git;cd ipv6-dhclient-script;chmod +x ipv6-dhclient-script.sh
+echo "IPV6_ADDRESS IPV6_SUBNET IPV6_DUID"
+echo "2001:bc8:x:xx::1 56 00:03:xx:xx:xx:xx:xx:xx:xx:xx"
+if [[ -z $IPV6_ADDRESS ]]; then
+  read IPV6_ADDRESS
+fi
+if [[ -z $IPV6_SUBNET ]]; then
+  read IPV6_SUBNET
+fi
+if [[ -z $IPV6_DUID ]]; then
+  read IPV6_DUID
+fi
+DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡名称
+./ipv6-dhclient-script.sh $DEFAULT_INTERFACE $IPV6_ADDRESS $IPV6_SUBNET $IPV6_DUID
+ping6 ipv6.google.com
+## ikoula
+echo "IPV6_ADDRESS  IPV6_SUBNET GATE_WAY"
+echo "2a00:c70:1:x:xx:xxx:xxxx:2 96 2a00:c70:1:x:xx:xxx::1"
+if [[ -z $IPV6_ADDRESS ]]; then
+  read IPV6_ADDRESS
+fi
+if [[ -z $IPV6_SUBNET ]]; then
+  read IPV6_SUBNET
+fi
+if [[ -z $GATE_WAY ]]; then
+  read GATE_WAY
+fi
+DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡名称
+wget -q https://raw.githubusercontent.com/lovewangbo/ipv6-dhclient-script/master/templates/Debian/etc_network_interfaces_ikoula
+sed -e "s/{{INTERFACE}}/$DEFAULT_INTERFACE/g" -e "s/{{BLOCK_ADDR}}/$BLOCK_ADDR/g" -e "s/{{BLOCK_SUBNET}}/$BLOCK_SUBNET/g" -e "s/{{GATE_WAY}}/$GATE_WAY/g" etc_network_interfaces_ikoula
+mv etc_network_interfaces_ikoula /etc/network/interfaces
+##End
+
+
+
+# 安装rTorrent和ruTorrent
+su
+
+# 可以安装二进制包，不支持ipv6
+apt-get install rtorrent;
+# 也可自行编译安装支持IPv6的版本
+cd ~/tmp
+TODAY=`date +%Y-%m-%d`; TODAY=$(date +%Y-%m-%d);
+mkdir -p $TODAY; cd $TODAY
+# 原安装脚本
+#wget https://raw.githubusercontent.com/lovewangbo/rTorrent/master/rtorrent_ipv6_v3.1
+#chmod +x rtorrent_ipv6_*
+#sudo ./rtorrent_ipv6_*
+# 原安装脚本的精炼版
+curl -L http://sourceforge.net/projects/xmlrpc-c/files/Xmlrpc-c%20Super%20Stable/1.33.18/xmlrpc-c-1.33.18.tgz/download -o xmlrpc-c.tgz
+tar zxvf xmlrpc-c.tgz
+mv xmlrpc-c-1.* xmlrpc
+cd xmlrpc/
+./configure --disable-cplusplus
+make clean && make -j$(nproc);
+sudo make install
+cd ..
+
+git clone https://github.com/rakshasa/libtorrent.git
+cd libtorrent
+./autogen.sh 
+./configure 
+make clean && make -j$(nproc);
+sudo make install
+cd ..
+
+apt-get install libncurses5-dev libcurl4-openssl-dev
+git clone https://github.com/rakshasa/rtorrent.git
+cd rtorrent/
+./autogen.sh
+./configure --with-xmlrpc-c --enable-ipv6
+make clean && make -j$(nproc);
+make install
+
+if [[ -z $(cat /etc/ld.so.conf | grep "/usr/local/lib/$") ]]; then
+  #echo -e "\ninclude /usr/local/lib/\n"  >> /etc/ld.so.conf
+  sudo sed -i '$a\include \/usr\/local\/lib\/' /etc/ld.so.conf
+fi
+sudo ldconfig
+ldd `whereis rtorrent | awk '{print $2}'`
+
+
+#确定运行rt软件的账户
+if [[ -z $BT_USER ]]; then
+  read -p "Add user account to run rtorrent/qbittorrent:" BT_USER
+fi
+if [[ -z $(cat /etc/passwd | grep "^$BT_USER:") ]]; then
+  sudo adduser $BT_USER
+  #sudo userdel $BT_USER
+  sudo usermod -s /bin/false $BT_USER
+  #sudo usermod -s /bin/bash $BT_USER
+  #或直接编辑/etc/passwd文件，将用户shell从false改成bash
+fi
+HOMEDIR=$(cat /etc/passwd | grep "$BT_USER": | cut -d: -f6)
+RTORRENT_USER=$BT_USER
+echo $HOMEDIR
+
+cd $HOMEDIR; wget -O $HOMEDIR/.rtorrent.rc https://raw.githubusercontent.com/lovewangbo/rTorrent/master/.rtorrent.rc; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent.rc; sed -i "s@HOMEDIRHERE@$HOMEDIR@g" $HOMEDIR/.rtorrent.rc; 
+mkdir $HOMEDIR/.rtorrent-session; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent-session; 
+mkdir $HOMEDIR/Downloads; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/Downloads;
+apt-get install -y tmux
+wget -O /etc/systemd/system/rtorrent.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/rtorrent.service
+sed -i "s@RT_USER_HERE@$RTORRENT_USER@g" /etc/systemd/system/rtorrent.service
+systemctl enable rtorrent
+systemctl status rtorrent
+systemctl start rtorrent
+systemctl status rtorrent
+systemctl list-unit-files | grep torrent
+ps -ef | grep rtorrent
+#systemctl disable rtorrent
+#systemctl stop rtorrent
+
+apt-get install -y php php7.0-cli php7.0-json php7.0-curl php7.0-cgi php7.0-mbstring libapache2-mod-php libapache2-mod-scgi apache2; apt-get install -y unrar unzip ffmpeg mediainfo;
+apt-get install git; cd /var/www/html; git clone https://github.com/Novik/ruTorrent.git; 
+chown -R $RTORRENT_USER:www-data ruTorrent/ && chmod -R 770 ruTorrent/;
+echo -e "\n\n[httprpc]\nenabled = yes\n[rpc]\nenabled = no"  >> /var/www/html/ruTorrent/conf/plugins.ini
+echo -n "Input Web user id to log in:"
+read -e rutorrent_user;
+
+RUT_WEB_USER=$rutorrent_user;
+htpasswd -c /etc/apache2/.htpasswd $RUT_WEB_USER;
+
+sed -i '/^<\/VirtualHost>$/i\\n\t<Directory "/var/www/html/ruTorrent">\n\t\tAuthType Basic\n\t\tAuthName "Restricted Content"\n\t\tAuthUserFile /etc/apache2/.htpasswd\n\t\tRequire valid-user\n\t</Directory>\n' /etc/apache2/sites-enabled/000-default.conf
+service apache2 restart
+# http://xxx.xxx.xxx.xxx/ruTorrent/
+
+
+
+# 安装qBittorrent
+sudo apt-get install -y build-essential pkg-config automake libtool git
+sudo apt-get install -y libboost-dev libboost-system-dev libboost-chrono-dev libboost-random-dev libssl-dev
+sudo apt-get install -y qtbase5-dev qttools5-dev-tools libqt5svg5-dev
+sudo apt-get install -y python3
+####libtorrent安装开始
+#以下二选一
+
+####安装二进制包，若为v1.0.7则非C++11编译，经测试不兼容qb v4.0.3（编译时报命名空间错误），但可与qb v3.3.14兼容
+sudo apt-get install -y libtorrent-rasterbar-dev
+
+####编译安装指定版本
+# 较老版本的qb，如v3.3.x与libtorrent 1.1.x存在兼容性问题。
+# 较新版本的qb，已知v4.0.4与mt的IPV6 tracker存在兼容问题：Address family not supported by protocol "" (3)
+cd ~/tmp
+TODAY=`date +%Y-%m-%d`; TODAY=$(date +%Y-%m-%d);
+mkdir -p $TODAY; cd $TODAY
+git clone https://github.com/arvidn/libtorrent.git
+cd libtorrent
+git checkout $(git tag | grep libtorrent-1_0_ | sort -t _ -n -k 3 | tail -n 1)
+# 若apt-get autoremove过，可能被清理掉而缺少Geoip库，具体情形未知
+# sudo apt-get install libgeoip-dev
+#git checkout $(git tag | grep libtorrent-1_1_ | sort -t _ -n -k 3 | tail -n 1)
+./autotool.sh
+./configure -disable-debug --enable-encryption --with-libgeoip=system CXXFLAGS=-std=c++11
+make clean && make -j$(nproc);
+#checkinstall
+sudo make install
+
+if [[ -z $(cat /etc/ld.so.conf | grep "/usr/local/lib/$") ]]; then
+  #echo -e "\ninclude /usr/local/lib/\n"  >> /etc/ld.so.conf
+  sudo sed -i '$a\include \/usr\/local\/lib\/' /etc/ld.so.conf
+fi
+sudo ldconfig
+#########
+
+# 用automake工具编译安装的用以下命令可查到：
+pkg-config --list-all | grep libtorrent-rasterbar
+# 用apt-get install命令安装的还可用以下命令可查到，可以用dpkg -P卸载：
+dpkg -l | grep libtorrent-rasterbar
+####libtorrent安装完毕。
+#似乎只涉及删除一个库文件即可：
+ /bin/bash ../libtool   --mode=uninstall rm -f '/usr/local/lib/libtorrent-rasterbar.la'
+libtool: uninstall: rm -f /usr/local/lib/libtorrent-rasterbar.la /usr/local/lib/libtorrent-rasterbar.so.9.0.0 /usr/local/lib/libtorrent-rasterbar.so.9 /usr/local/lib/libtorrent-rasterbar.so /usr/local/lib/libtorrent-rasterbar.a
+##
+cd ..
+
+TODAY=`date +%Y-%m-%d`; TODAY=$(date +%Y-%m-%d);
+mkdir -p ~/tmp/$TODAY; cd ~/tmp/$TODAY
+git clone https://github.com/qbittorrent/qBittorrent
+cd qBittorrent;
+#以下二选一
+#########
+# 3.3.11原版本不能跳过校验，需merge若干commits
+git checkout release-3.3.11
+  # 增加快速发种选项
+git cherry-pick db3158c
+git cherry-pick b271fa9
+  # 显示磁盘IO状态
+git cherry-pick 1ce71fc
+#########
+# 3.3.14 mt和hdsky不支持
+#wget https://sourceforge.net/projects/qbittorrent/files/qbittorrent/qbittorrent-3.3.14/qbittorrent-3.3.14.tar.gz
+#tar -xvzf qbittorrent-*.tar.gz; cd qbittorrent-*;
+# 3.3.14修改后可在各站通用
+CHOOSED_QB="3.3.14";
+#先放弃所有本地修改
+git checkout .
+git checkout release-$CHOOSED_QB
+#sed -i '/CFBundleShortVersionString/,/<\/string>/{s/'"$CHOOSED_QB"'/3.3.11/p}' dist/mac/Info.plist
+#sed -i 's@!define PROG_VERSION "[0-9].[0-9].[0-9]\+"@!define PROG_VERSION "3.3.11"@' dist/windows/options.nsi
+sed -i 's@VER_MAJOR = [0-9]@VER_MAJOR = 3@' version.pri
+sed -i 's@VER_MINOR = [0-9]@VER_MINOR = 3@' version.pri
+sed -i 's@VER_BUGFIX = [0-9]\+@VER_BUGFIX = 11@' version.pri
+sed -i 's@USER_AGENT\[\] = "qBittorrent\/"@USER_AGENT\[\] = "qBittorrent v"@' src/base/bittorrent/session.cpp
+#cat dist/mac/Info.plist | grep 3.3.11
+#cat dist/windows/options.nsi | grep 3.3.11
+cat version.pri | grep 'VER_MAJOR =\|VER_MINOR =\|VER_BUGFIX ='
+cat src/base/bittorrent/session.cpp | grep "qBittorrent v"
+#########
+./configure --disable-gui;
+make clean && make -j$(nproc);
+sudo make install;
+#sudo checkinstall;
+ldd `whereis qbittorrent-nox | awk '{print $2}'`
+cd ..
+
+#确定运行qb软件的账户
+if [[ -z $BT_USER ]]; then
+  read -p "Add user account to run rtorrent/qbittorrent:" BT_USER
+fi
+if [[ -z $(cat /etc/passwd | grep "^$BT_USER:") ]]; then
+  sudo adduser $BT_USER
+  #sudo userdel $BT_USER
+  sudo usermod -s /bin/false $BT_USER
+  #sudo usermod -s /bin/bash $BT_USER
+  #或直接编辑/etc/passwd文件，将用户shell从false改成bash
+fi
+HOMEDIR=$(cat /etc/passwd | grep "$BT_USER": | cut -d: -f6)
+QB_USER=$BT_USER
+echo $HOMEDIR
+
+echo -e "web_port  Web_user  Web_passwd"
+echo -e "8080      admin     adminadmin"
+if [[ -z $QB_WEB_PORT ]]; then
+  read QB_WEB_PORT
+fi
+if [[ -z $QB_WEB_USER ]]; then
+  read QB_WEB_USER
+fi
+if [[ -z $QB_WEB_PASSWD ]]; then
+  read QB_WEB_PASSWD
+fi
+
+QB_WEB_PASSWD_HASH=`echo -n $QB_WEB_PASSWD | md5sum | awk '{print $1}'`;
+#sudo wget -qO $HOMEDIR/.config/qBittorrent/qBittorrent.conf https://raw.githubusercontent.com/lovewangbo/qbittorrent/master/qBittorrent.conf
+wget -qO qBittorrent.conf https://raw.githubusercontent.com/lovewangbo/seedbox/master/conf/qBittorrent.conf
+sed -i 's@\(Downloads\\SavePath=\)\/home\/QBUSERHERE@\1'"$HOMEDIR"'@g' qBittorrent.conf
+#sed -i 's@\(WebUI\\Port=\)8080@\1'"$QB_WEB_PORT"'@g' qBittorrent.conf
+sed -i 's@\(WebUI\\Username=\)admin@\1'"$QB_WEB_USER"'@g' qBittorrent.conf
+sed -i 's/\(WebUI\\Password_ha1=@ByteArray(\)f6fdffe48c908deb0f4c3bd36c032e72/\1'"$QB_WEB_PASSWD_HASH"'/g' qBittorrent.conf
+sudo mkdir -p $HOMEDIR/.config/qBittorrent/
+sudo mv qBittorrent.conf $HOMEDIR/.config/qBittorrent/qBittorrent.conf
+sudo chown -R "$QB_USER"."$QB_USER" $HOMEDIR/.config/
+
+QB_PATH_NAME=`whereis qbittorrent-nox | awk '{print $2}'`
+#QB_PATH_NAME=$(whereis qbittorrent-nox | awk '{print $2}') #也可
+wget -qO qbittorrent.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/qbittorrent.service
+sed -i 's@{{QB_USER}}@'"$QB_USER"'@g' qbittorrent.service;
+sed -i 's@{{QB_PATH_NAME}}@'"$QB_PATH_NAME"'@g' qbittorrent.service;
+sed -i 's@{{QB_WEB_PORT}}@'"$QB_WEB_PORT"'@g' qbittorrent.service;
+sudo mv qbittorrent.service /etc/systemd/system/qbittorrent.service;
+
+sudo systemctl enable qbittorrent
+systemctl status qbittorrent
+sudo systemctl start qbittorrent
+systemctl status qbittorrent
+sudo systemctl stop qbittorrent
+sudo systemctl disable qbittorrent
+systemctl list-unit-files | grep torrent
+
+#my_server_ip=127.0.0.1
+#my_server_port=
+#mypassword=
+
+
+# 安装Shadowsocks
+echo "Now install shadowsocks:"
+python --version
+echo "Python should be 2.6/2.7, and your python version is:"
+sudo apt-get install -y python-gevent python-pip;
+sudo pip install shadowsocks;
+sudo apt-get install -y python-m2crypto;
+echo -e "server_port  passwd:"
+echo -e "8080         adminadmin"
+if [[ -z $my_server_port ]]; then
+  read my_server_port
+fi
+if [[ -z $my_server_passwd ]]; then
+  read my_server_passwd
+fi
+wget -qO shadowsocks_config.json https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/shadowsocks/config.json
+sed -i "s@my_server_ip@${my_server_ip}@g" shadowsocks_config.json
+sed -i "s@my_server_port@${my_server_port}@g" shadowsocks_config.json
+sed -i "s@mypassword@${my_server_passwd}@g" shadowsocks_config.json
+sudo mv shadowsocks_config.json /etc/shadowsocks/config.json
+mkdir -p /etc/shadowsocks;
+sudo wget -O /etc/systemd/system/shadowsocks.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/shadowsocks/shadowsocks.service
+sudo systemctl enable shadowsocks;
+sudo systemctl start shadowsocks;
+
+# 限速
+su #必须以root运行方正常工作
+DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡名称
+tc qdisc add dev $DEFAULT_INTERFACE root tbf rate 450mbit latency 70ms burst 10kb # 正确的写法	
+#tc qdisc add dev $DEFAULT_INTERFACE root tbf rate 500mbit latency 50ms burst 1000 # 错误的写法
+tc qdisc del dev $DEFAULT_INTERFACE root
+tc qdisc show dev $DEFAULT_INTERFACE
+
+#流量统计
+su
+apt-get install vnstat
+DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡名称
+vnstat -u -i $DEFAULT_INTERFACE
+vnstat -h -i $DEFAULT_INTERFACE
+#注意要在root用户下安装及查看，非root用户安装或查看数据不更新
+
+#如有需要，获取网卡名称和IP地址
+echo -n "Your possible Ethernet: "
+DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡名称
+# ifconfig | grep "Link encap" | awk '{print $1}' # 也可
+# read -e DEFAULT_INTERFACE
+#ifconfig | grep inet | cut -d : -f 2 | cut -d " " -f 1 # 获取ip地址
+#curl -s checkip.dyndns.com | cut -d' ' -f 6  | cut -d'<' -f 1 #也可
+#echo -n "Input the proper IP address: "
+#read -e my_server_ip
+my_server_ip=$(ifconfig $DEFAULT_INTERFACE | grep inet | cut -d : -f 2 | cut -d " " -f 1)
+echo -n "Check your IP address : "
+echo $my_server_ip
