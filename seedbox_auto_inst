@@ -158,14 +158,15 @@ mkdir $HOMEDIR/Downloads; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/Downl
 apt-get install -y tmux
 wget -O /etc/systemd/system/rtorrent.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/rtorrent.service
 sed -i "s@RT_USER_HERE@$RTORRENT_USER@g" /etc/systemd/system/rtorrent.service
-systemctl enable rtorrent
-systemctl status rtorrent
-systemctl start rtorrent
-systemctl status rtorrent
+sudo systemctl enable rtorrent
+sudo systemctl status rtorrent
+sudo systemctl start rtorrent
+sudo systemctl status rtorrent
+sudo systemctl disable rtorrent
+sudo systemctl stop rtorrent
+
 systemctl list-unit-files | grep torrent
 ps -ef | grep rtorrent
-#systemctl disable rtorrent
-#systemctl stop rtorrent
 
 apt-get install -y php php7.0-cli php7.0-json php7.0-curl php7.0-cgi php7.0-mbstring libapache2-mod-php libapache2-mod-scgi apache2; apt-get install -y unrar unzip ffmpeg mediainfo;
 apt-get install git; cd /var/www/html; git clone https://github.com/Novik/ruTorrent.git; 
