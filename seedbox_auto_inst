@@ -255,14 +255,14 @@ CHOOSED_QB="3.3.14";
 #先放弃所有本地修改
 git checkout .
 git checkout release-$CHOOSED_QB
-#sed -i '/CFBundleShortVersionString/,/<\/string>/{s/'"$CHOOSED_QB"'/3.3.11/p}' dist/mac/Info.plist
-#sed -i 's@!define PROG_VERSION "[0-9].[0-9].[0-9]\+"@!define PROG_VERSION "3.3.11"@' dist/windows/options.nsi
+sed -i '/CFBundleShortVersionString/,/<\/string>/{s/'"$CHOOSED_QB"'/3.3.11/p}' dist/mac/Info.plist
+sed -i 's@!define PROG_VERSION "[0-9].[0-9].[0-9]\+"@!define PROG_VERSION "3.3.11"@' dist/windows/options.nsi
 sed -i 's@VER_MAJOR = [0-9]@VER_MAJOR = 3@' version.pri
 sed -i 's@VER_MINOR = [0-9]@VER_MINOR = 3@' version.pri
 sed -i 's@VER_BUGFIX = [0-9]\+@VER_BUGFIX = 11@' version.pri
 sed -i 's@USER_AGENT\[\] = "qBittorrent\/"@USER_AGENT\[\] = "qBittorrent v"@' src/base/bittorrent/session.cpp
-#cat dist/mac/Info.plist | grep 3.3.11
-#cat dist/windows/options.nsi | grep 3.3.11
+cat dist/mac/Info.plist | grep 3.3.11
+cat dist/windows/options.nsi | grep 3.3.11
 cat version.pri | grep 'VER_MAJOR =\|VER_MINOR =\|VER_BUGFIX ='
 cat src/base/bittorrent/session.cpp | grep "qBittorrent v"
 #########
