@@ -173,7 +173,9 @@ apt-get install git; cd /var/www/html; git clone https://github.com/Novik/ruTorr
 chown -R $RTORRENT_USER:www-data ruTorrent/ && chmod -R 770 ruTorrent/;
 echo -e "\n\n[httprpc]\nenabled = yes\n[rpc]\nenabled = no"  >> /var/www/html/ruTorrent/conf/plugins.ini
 echo -n "Input Web user id to log in:"
-read -e rutorrent_user;
+if [[ -z $rutorrent_user ]]; then
+  read -p "Add web user account to login in rtorrent/qbittorrent:" rutorrent_user;
+fi
 
 RUT_WEB_USER=$rutorrent_user;
 htpasswd -c /etc/apache2/.htpasswd $RUT_WEB_USER;
