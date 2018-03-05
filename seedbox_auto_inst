@@ -88,13 +88,13 @@ DEFAULT_INTERFACE=`ip route get 8.8.8.8 | awk '{print $5; exit}'` #获取网卡�
 ifdown $DEFAULT_INTERFACE && ifup $DEFAULT_INTERFACE
 ##End
 
+sudo apt install git curl tmux
+sudp apt install libsigc++-2.0-dev # C++ compiler
 
 
 # 安装rTorrent和ruTorrent
-su
-
 # 可以安装二进制包，不支持ipv6
-apt-get install rtorrent;
+sudo apt-get install rtorrent;
 # 也可自行编译安装支持IPv6的版本
 cd ~/tmp
 TODAY=`date +%Y-%m-%d`; TODAY=$(date +%Y-%m-%d);
@@ -104,15 +104,16 @@ mkdir -p $TODAY; cd $TODAY
 #chmod +x rtorrent_ipv6_*
 #sudo ./rtorrent_ipv6_*
 # 原安装脚本的精炼版
-curl -L http://sourceforge.net/projects/xmlrpc-c/files/Xmlrpc-c%20Super%20Stable/1.33.18/xmlrpc-c-1.33.18.tgz/download -o xmlrpc-c.tgz
-tar zxvf xmlrpc-c.tgz
-mv xmlrpc-c-1.* xmlrpc
-cd xmlrpc/
+#curl -L http://sourceforge.net/projects/xmlrpc-c/files/Xmlrpc-c%20Super%20Stable/1.33.18/xmlrpc-c-1.33.18.tgz/download -o xmlrpc-c.tgz
+wget xmlrpc-c.tgz https://sourceforge.net/projects/xmlrpc-c/files/Xmlrpc-c%20Super%20Stable/1.39.12/xmlrpc-c-1.39.12.tgz
+tar zxvf xmlrpc-c*.tgz
+cd xmlrpc*
 ./configure --disable-cplusplus
 make clean && make -j$(nproc);
 sudo make install
 cd ..
 
+sudo apt install libtool
 git clone https://github.com/rakshasa/libtorrent.git
 cd libtorrent
 ./autogen.sh 
@@ -121,13 +122,13 @@ make clean && make -j$(nproc);
 sudo make install
 cd ..
 
-apt-get install libncurses5-dev libcurl4-openssl-dev
+sudo apt-get install libncurses5-dev libcurl4-openssl-dev
 git clone https://github.com/rakshasa/rtorrent.git
 cd rtorrent/
 ./autogen.sh
 ./configure --with-xmlrpc-c --enable-ipv6
 make clean && make -j$(nproc);
-make install
+sudo make install
 
 if [[ -z $(cat /etc/ld.so.conf | grep "/usr/local/lib/$") ]]; then
   #echo -e "\ninclude /usr/local/lib/\n"  >> /etc/ld.so.conf
@@ -152,12 +153,17 @@ HOMEDIR=$(cat /etc/passwd | grep "$BT_USER": | cut -d: -f6)
 RTORRENT_USER=$BT_USER
 echo $HOMEDIR
 
-cd $HOMEDIR; wget -O $HOMEDIR/.rtorrent.rc https://raw.githubusercontent.com/lovewangbo/rTorrent/master/.rtorrent.rc; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent.rc; sed -i "s@HOMEDIRHERE@$HOMEDIR@g" $HOMEDIR/.rtorrent.rc; 
-mkdir $HOMEDIR/.rtorrent-session; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent-session; 
-mkdir $HOMEDIR/Downloads; chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/Downloads;
-apt-get install -y tmux
-wget -O /etc/systemd/system/rtorrent.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/rtorrent.service
-sed -i "s@RT_USER_HERE@$RTORRENT_USER@g" /etc/systemd/system/rtorrent.service
+cd $HOMEDIR;
+sudo wget -O $HOMEDIR/.rtorrent.rc https://raw.githubusercontent.com/lovewangbo/rTorrent/master/.rtorrent.rc;
+sudo chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent.rc;
+sudo sed -i "s@HOMEDIRHERE@$HOMEDIR@g" $HOMEDIR/.rtorrent.rc; 
+sudo mkdir $HOMEDIR/.rtorrent-session;
+sudo chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/.rtorrent-session; 
+sudo mkdir $HOMEDIR/Downloads;
+sudo chown "$RTORRENT_USER"."$RTORRENT_USER" $HOMEDIR/Downloads;
+
+sudo wget -O /etc/systemd/system/rtorrent.service https://raw.githubusercontent.com/lovewangbo/seedbox/master/templates/rtorrent.service
+sudo sed -i "s@RT_USER_HERE@$RTORRENT_USER@g" /etc/systemd/system/rtorrent.service
 sudo systemctl enable rtorrent
 sudo systemctl status rtorrent
 sudo systemctl start rtorrent
@@ -168,20 +174,22 @@ sudo systemctl stop rtorrent
 systemctl list-unit-files | grep torrent
 ps -ef | grep rtorrent
 
-apt-get install -y php php7.0-cli php7.0-json php7.0-curl php7.0-cgi php7.0-mbstring libapache2-mod-php libapache2-mod-scgi apache2; apt-get install -y unrar unzip ffmpeg mediainfo;
-apt-get install git; cd /var/www/html; git clone https://github.com/Novik/ruTorrent.git; 
-chown -R $RTORRENT_USER:www-data ruTorrent/ && chmod -R 770 ruTorrent/;
-echo -e "\n\n[httprpc]\nenabled = yes\n[rpc]\nenabled = no"  >> /var/www/html/ruTorrent/conf/plugins.ini
+sudo apt-get install -y php php7.0-cli php7.0-json php7.0-curl php7.0-cgi php7.0-mbstring libapache2-mod-php libapache2-mod-scgi apache2; apt-get install -y unrar unzip ffmpeg mediainfo;
+cd /var/www/html;
+sudo git clone https://github.com/Novik/ruTorrent.git;
+sudo chown -R $RTORRENT_USER:www-data ruTorrent/
+sudo chmod -R 770 ruTorrent/;
+sudo echo -e "\n\n[httprpc]\nenabled = yes\n[rpc]\nenabled = no"  >> /var/www/html/ruTorrent/conf/plugins.ini
 echo -n "Input Web user id to log in:"
 if [[ -z $rutorrent_user ]]; then
   read -p "Add web user account to login in rtorrent/qbittorrent:" rutorrent_user;
 fi
 
 RUT_WEB_USER=$rutorrent_user;
-htpasswd -c /etc/apache2/.htpasswd $RUT_WEB_USER;
+sudo htpasswd -c /etc/apache2/.htpasswd $RUT_WEB_USER;
 
-sed -i '/^<\/VirtualHost>$/i\\n\t<Directory "/var/www/html/ruTorrent">\n\t\tAuthType Basic\n\t\tAuthName "Restricted Content"\n\t\tAuthUserFile /etc/apache2/.htpasswd\n\t\tRequire valid-user\n\t</Directory>\n' /etc/apache2/sites-enabled/000-default.conf
-service apache2 restart
+sudo sed -i '/^<\/VirtualHost>$/i\\n\t<Directory "/var/www/html/ruTorrent">\n\t\tAuthType Basic\n\t\tAuthName "Restricted Content"\n\t\tAuthUserFile /etc/apache2/.htpasswd\n\t\tRequire valid-user\n\t</Directory>\n' /etc/apache2/sites-enabled/000-default.conf
+sudo service apache2 restart
 # http://xxx.xxx.xxx.xxx/ruTorrent/
 
 
