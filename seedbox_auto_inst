@@ -194,6 +194,87 @@ sudo service apache2 restart
 
 
 
+# 安装基于irssi的autodl-irssi插件
+#参考资料
+#https://github.com/autodl-community/autodl-rutorrent/wiki
+
+# 安装SSH服务
+sudo apt-get install openssh-server
+# 安装系统必备工具
+sudo apt install git tmux unzip
+# 安装主程序
+sudo apt install irssi
+
+# 安装依赖php库【未经测试，可能不需要】
+phpver=php7.0
+for module in json xml sockets; do php -m| grep -wq $module || echo "Missing module: $module"; done
+sudo apt install $phpver-xml $phpver-json
+# enable php7.0-xml
+sudo phpenmod xml json
+# Restart php
+sudo service apache2 restart
+
+# 安装irssi的autodl-irssi插件所依赖的perl库
+sudo apt install libxml-libxml-perl libjson-perl libarchive-zip-perl
+
+# 若非全新安装，需要保证原进程完全停止
+sudo kill -9 `ps -aux | grep irssi | awk '{print $2; exit}'`
+
+# 确定rt用户目录
+HOMEDIR=$(cat /etc/passwd | grep "$BT_USER": | cut -d: -f6)
+RTORRENT_USER=$BT_USER
+echo $HOMEDIR
+
+# 备份重要配置文件，删除原程序文件
+sudo mv $HOMEDIR/.autodl/autodl.cfg $HOMEDIR/.autodl/autodl.cfg.bak
+sudo rm -rf $HOMEDIR/.irssi/scripts/AutodlIrssi $HOMEDIR/.irssi/scripts/autorun/autodl-irssi.pl
+sudo rm -rf /var/www/html/ruTorrent/plugins/autodl-irssi
+
+# 安装基于irssi自动启动脚本autodl-irssi
+adlport=36000
+adlpass=abcdefg
+sudo mkdir -p $HOMEDIR/.irssi/scripts/autorun $HOMEDIR/.autodl
+sudo wget -qO $HOMEDIR/autodl-irssi.zip $(curl -s https://api.github.com/repos/autodl-community/autodl-irssi/releases/latest | grep 'browser_' | cut -d\" -f4)
+sudo unzip -qo $HOMEDIR/autodl-irssi.zip -d $HOMEDIR/.irssi/scripts/
+sudo mv $HOMEDIR/.irssi/scripts/autodl-irssi.pl $HOMEDIR/.irssi/scripts/autorun/
+sudo rm -f $HOMEDIR/autodl-irssi.zip
+
+# 安装autodl-rutorrent
+# 方法一
+cd /var/www/html/ruTorrent/plugins/
+sudo git clone https://github.com/autodl-community/autodl-rutorrent.git autodl-irssi
+sudo chown -R www-data:www-data autodl-irssi
+# # 方法二
+wget -qO $HOMEDIR/autodl-rutorrent.zip https://github.com/autodl-community/autodl-rutorrent/archive/master.zip
+unzip -qo $HOMEDIR/autodl-rutorrent.zip
+mv $HOMEDIR/autodl-rutorrent-master /var/www/html/ruTorrent/plugins/autodl-irssi
+rm $HOMEDIR/autodl-rutorrent.zip
+
+sudo wget -qO $HOMEDIR/.autodl/autodl.cfg https://raw.githubusercontent.com/lonecrane/seedbox/master/conf/autodl.cfg
+sudo sed -i '/gui-server-port\ =\ /c\gui-server-port = '"$adlport"'' $HOMEDIR/.autodl/autodl.cfg
+sudo sed -i '/gui-server-password\ =\ /c\gui-server-password = '"$adlpass"'' $HOMEDIR/.autodl/autodl.cfg
+
+sudo mv /var/www/html/ruTorrent/plugins/autodl-irssi/_conf.php /var/www/html/ruTorrent/plugins/autodl-irssi/conf.php
+sudo sed -i '/\$autodlPort\ =\ /c\\$autodlPort = '"$adlport"';' /var/www/html/ruTorrent/plugins/autodl-irssi/conf.php
+sudo sed -i '/\$autodlPassword\ =\ /a\\$autodlPassword = '"$adlpass"';' /var/www/html/ruTorrent/plugins/autodl-irssi/conf.php
+
+# set permissions
+sudo chown -R www-data:www-data /var/www/html/ruTorrent
+sudo chmod -R 755 /var/www/html/ruTorrent
+sudo chown -R $BT_USER:$BT_USER $HOMEDIR
+
+# Restart irssi
+sudo kill -9 `ps -aux | grep irssi | awk '{print $2; exit}'`
+ps -aux | grep irssi
+sudo su - $BT_USER -c 'tmux -2 new-session -d -s autodl irssi'
+
+# If necessary, go to look the interface of irssi
+su $BT_USER
+tmux attach -t autodl
+tmux kill-session -t autodl
+
+
+
 # 安装qBittorrent
 sudo apt-get install -y build-essential pkg-config automake libtool git
 sudo apt-get install -y libboost-dev libboost-system-dev libboost-chrono-dev libboost-random-dev libssl-dev
