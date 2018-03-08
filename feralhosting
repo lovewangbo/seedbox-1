@@ -1,0 +1,23 @@
+RUT_USER=
+RUT_PASSWD=
+
+# 测试网络和IO性能
+wget -O speedtest https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py
+chmod +x speedtest
+./speedtest
+wget -qO- bench.sh | bash
+
+# 登录信息在用户面板的Software中。更改默认SSH密码：
+passwd
+# 包括安装软件在内的操作只能针对用户文件夹中进行，没有sudo权限，当然更没有root密码
+# 在面板中安装deluge，并查看其默认监视文件夹为 /media/md3/yellow/private/deluge/watch/
+# 在面板中安装rtorrent以后再手动覆盖安装最新版rutorrent，脚本为官方提供：
+cd ~/www/$(whoami).$(hostname -f)/public_html/
+git clone https://github.com/Novik/ruTorrent.git
+cp -r rutorrent/conf/* ruTorrent/conf/
+cp rutorrent/.ht* ruTorrent/
+rm -rf rutorrent/ && mv ruTorrent/ rutorrent/
+# 更改默认rutorrent登录密码
+htpasswd -b `find ~ -name .htpasswd` $RUT_USER $RUT_PASSWD
+# 安装autodl-irssi插件，包括底层软件和rutorrent的GUI按钮
+wget -qO ~/install.autodl.sh https://bitbucket.org/feralio/wiki/raw/HEAD/src/wiki/software/autodl/autodl.sh && bash ~/install.autodl.sh
