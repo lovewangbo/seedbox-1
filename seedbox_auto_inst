@@ -196,6 +196,7 @@ sudo service apache2 restart
 
 # 安装基于irssi的autodl-irssi插件
 #参考资料
+#http://wiki.pulsedmedia.com/index.php/Installing_autodl-irssi
 #https://github.com/autodl-community/autodl-rutorrent/wiki
 
 # 安装SSH服务
